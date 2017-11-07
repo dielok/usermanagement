@@ -8,7 +8,7 @@ namespace Helper;
 
 class Session {
 
-    public function id(){
+    public function session_id(){
         
         return session_id();
     }

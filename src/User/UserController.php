@@ -3,6 +3,7 @@ namespace User;
 
 use Helper\Salt;
 use Helper\Cleaner;
+use Exception;
 use User\UserRepository;
 
 class UserController {
@@ -92,5 +93,15 @@ class UserController {
             ];
         }
         return $data;
+    }
+    
+    public function getUserdata($user_id){
+        $user = $this->userRepository->getUserData($user_id);
+        
+        
+        if(empty($user)){
+            throw new Exception();
+        }
+        return $user;
     }
 }

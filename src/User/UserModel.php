@@ -1,9 +1,4 @@
 <?php
-/**
- * Description of UserModel
- *
- * @author martinleue
- */
 namespace User;
 
 class UserModel {
@@ -12,6 +7,14 @@ class UserModel {
     public $user_id;
     public $email;
     public $password;
+    public $lastname;
+    public $firstname;
     public $salt;
+    public $session_id;
     public $created_at;
+    public $status;
+    
+    public function __construct(){
+        $this->status = 201;
+    }
 }
