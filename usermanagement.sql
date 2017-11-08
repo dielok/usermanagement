@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: localhost:8889
--- Erstellungszeit: 06. Nov 2017 um 14:41
+-- Erstellungszeit: 08. Nov 2017 um 14:49
 -- Server-Version: 5.6.35
 -- PHP-Version: 7.1.8
 
@@ -13,25 +13,21 @@ SET time_zone = "+00:00";
 --
 -- Datenbank: `usermanagement`
 --
-CREATE DATABASE usermanagement;
-USE usermanagement;
+CREATE DATABASE IF NOT EXISTS `usermanagement` DEFAULT CHARACTER SET utf8 COLLATE utf8_general_ci;
+USE `usermanagement`;
+
 -- --------------------------------------------------------
 
 --
--- Tabellenstruktur für Tabelle `Token`
+-- Tabellenstruktur für Tabelle `Sessions`
 --
 
-CREATE TABLE `Token` (
-  `id` int(11) NOT NULL,
-  `token` varchar(20) NOT NULL
+CREATE TABLE `Sessions` (
+  `user_id` int(11) NOT NULL,
+  `token` varchar(32) NOT NULL,
+  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` timestamp NULL DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
-
---
--- Daten für Tabelle `Token`
---
-
-INSERT INTO `Token` (`id`, `token`) VALUES
-(1, 'm6912gkenj');
 
 -- --------------------------------------------------------
 
@@ -46,25 +42,19 @@ CREATE TABLE `Users` (
   `lastname` varchar(50) NOT NULL,
   `firstname` varchar(50) NOT NULL,
   `salt` varchar(32) NOT NULL,
-  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP
+  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` timestamp NULL DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
-
---
--- Daten für Tabelle `Users`
---
-
-INSERT INTO `Users` (`user_id`, `email`, `password`, `lastname`, `firstname`, `salt`, `created_at`) VALUES
-(1, 'test1@test.de', '$2y$10$D6P2TVkMWAJDjzIEKE69I.TKF.nq57wi9ioSbt2oGhgps/hbUUtBq', 'Leue', 'Martin', '37bd2e06abecf2b3e3dfa999c1094ef9', '2017-11-06 13:11:48');
 
 --
 -- Indizes der exportierten Tabellen
 --
 
 --
--- Indizes für die Tabelle `Token`
+-- Indizes für die Tabelle `Sessions`
 --
-ALTER TABLE `Token`
-  ADD PRIMARY KEY (`id`);
+ALTER TABLE `Sessions`
+  ADD PRIMARY KEY (`user_id`);
 
 --
 -- Indizes für die Tabelle `Users`
@@ -80,4 +70,4 @@ ALTER TABLE `Users`
 -- AUTO_INCREMENT für Tabelle `Users`
 --
 ALTER TABLE `Users`
-  MODIFY `user_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+  MODIFY `user_id` int(11) NOT NULL AUTO_INCREMENT;

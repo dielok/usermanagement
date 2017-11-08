@@ -10,8 +10,8 @@ class UserModel {
     public $lastname;
     public $firstname;
     public $salt;
-    public $session_id;
     public $created_at;
+    public $updated_at;
     public $status;
     
     public function __construct(){
