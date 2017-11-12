@@ -1,174 +1,118 @@
 <?php
 namespace User;
 
-use Exception;
-use Helper\Salt;
-use Helper\Cleaner;
+use PDO;
 use User\UserModel;
-use User\UserRepository;
-
+use Token\TokenController;
+use Helper\Salt;
+use Helper\PostCleaner;
+/**
+ * Description of UserController
+ *
+ * @author martinleue
+ */
 class UserController {
-
-    public $pdo, $cleaner, $userRepository, $salt;
-
-    public function __construct(UserRepository $userRepository) {
-        $this->userRepository = $userRepository;
-        $this->cleaner = new Cleaner();
-        $this->salt = new Salt();
+    private $pdo, $postCleaner, $token, $config;
+    
+    public function __construct() {
+        $this->token = new TokenController();
+        $this->postCleaner = new PostCleaner();
+        $this->config = $ini_array = parse_ini_file(__DIR__."/../../inc/config.ini", TRUE);
     }
     
-    public function register($post, $token){
-        // Clean all -> $_POST
-        foreach($post as $key => $value){
-            $data[$key] = $this->cleaner->params($value);
+    /*
+     * init DB
+     */
+    public function init_DB(PDO $pdo){
+        $this->pdo = $pdo;
+    }
+    
+    /*
+     * Login Methods
+     */
+    public function signinSession(){
+        
+    }
+    
+    /*
+     * CRUD Methods
+     */
+    public function create(Array $post){
+        $user['email']      = $this->postCleaner->params($post['email']);
+        $user['password']   = $this->postCleaner->params($post['password']);
+        $user['lastname']   = $this->postCleaner->params($post['lastname']);
+        $user['firstname']  = $this->postCleaner->params($post['firstname']);
+        $user['pw_salt']    = Salt::back($user['email'],$user['password'])."!";
+                
+        $user['password'] = password_hash($user['password'].$user['pw_salt'], PASSWORD_DEFAULT);
+        
+        $userModel = new UserModel($this->pdo);
+        $findUser  = $userModel->findUser($user['email']);
+                
+        if(empty($findUser)){
+            $userModel->createUser($user);
+            $this->config['createUser_ini']['Token'] = $this->token->newToken();
+            return $this->config['createUser_ini'];
         }
-        // Params
-        $salt       = $this->salt->salt();
-        $email      = $data['email'];
-        $password   = password_hash($data['password'].$salt, PASSWORD_DEFAULT);
-        $lastname   = $data['lastname'];
-        $firstname  = $data['firstname'];
-        // User Exists
-        $checkEmail = $this->userRepository->findMail($email);
-        // Email validate
-        if(empty($checkEmail) AND filter_var($email, FILTER_VALIDATE_EMAIL) !== false){
-            if(strlen($password) >= 8){
-                if((strlen($lastname) && strlen($firstname)) >= 1){
-                    // UserData insert DB
-                    $register = $this->userRepository->register($email, $password, $lastname, $firstname, $salt);
-                    // Info
-                    $data = [
-                        "Report"    => "Success",
-                        "Msg"       => "User successfully registered",
-                        "Status"    => 201,
-                        "Token"     => $token,
-                        "UserId"    => $register
-                    ];                    
-                }else{
-                    $data = [
-                        "Report"    => "Failure",
-                        "Msg"       => "First name or last name too short",
-                        "Status"    => 200
-                    ];              
-                }
-            }else{
-                $data = [
-                    "Report"    => "Failure",
-                    "Msg"       => "Password is too short",
-                    "Status"    => 200
-                ];  
+        else{
+            return $this->config['createUser_Error_ini'];
+        }
+    }
+    
+    public function read($id){
+        $userModel = new UserModel($this->pdo);
+        $user = $userModel->readUser($id);
+        
+        if($user === false){
+            return $this->config['readUser_Error_ini'];
+        }
+        else{
+            $this->config['readUser_ini']['UserId']     = $user['user_id'];
+            $this->config['readUser_ini']['Email']      = $user['email'];
+            $this->config['readUser_ini']['Password']   = $user['password'];
+            $this->config['readUser_ini']['Lastname']   = $user['lastname'];
+            $this->config['readUser_ini']['Firstname']  = $user['firstname'];
+            $this->config['readUser_ini']['Salt']       = $user['salt'];
+            $this->config['readUser_ini']['Created']    = $user['created_at'];
+            $this->config['readUser_ini']['Updated']    = $user['updated_at'];
+            return $this->config['readUser_ini'];
+        }
+    }
+    
+    public function update($id, $post){
+        $time = date("Y-m-d H:i:s");
+        $userModel = new UserModel($this->pdo);
+        foreach($post as $value => $key){
+            if($value == "password"){
+                $salt = Salt::back($value, $key)."!";
+                $key = password_hash($post['password'].$salt, PASSWORD_DEFAULT);
+                $userModel->updateUser($id, "salt", $salt, $time);
             }
-        }else{
-            $data = [
-                "Report"    => "Failure",
-                "Msg"       => "User not registered, user already exists",
-                "Status"    => 200
-            ];
-        }
-        return $data;
-    }
-    
-    public function signin($post,$token){
-        
-        foreach($post as $key => $value){
-            $data[$key] = $this->cleaner->params($value);
+            $userModel->updateUser($id, (string)$value, $key, $time);
+            $data[$value] = $key; 
         }
         
-        $email      = $data['email'];
-        $password   = $data['password'];
-
-        $checkUser      = $this->userRepository->signin($email);   
+        if($data === null){
+            return $this->config['updateUser_Error_ini'];
+        }
+        else{
+            return $this->config['updateUser_ini'];
+        }
+    }
+    
+    public function delete($id,$post){
+        $password = $this->postCleaner->params($post['password']);
+        $userModel = new UserModel($this->pdo);
+        $userData = $userModel->readUser($id);
         
-        if(password_verify(($password.$checkUser->salt), $checkUser->password)){
-            $data = [
-                "Report"    => "Success",
-                "Msg"       => "Registration was successful",
-                "Status"    => 201,
-                "Token"     => $token,
-                "UserId"    => $checkUser->user_id
-            ];
-        }else{
-            $data = [
-                "Report"    => "Failure",
-                "Msg"       => "Login failed",
-                "Status"    => 200
-            ];
+        if(password_verify($password.$userData['salt'], $userData['password'])){
+            $userModel->deleteUser($id);
+            $this->config['deleteUser_ini']['UserId'] = $id;
+            return $this->config['deleteUser_ini'];
         }
-        return $data;
-    }
-    
-    public function getUserData($user_id){
-        $user = $this->userRepository->getUserData($user_id);      
-        if(empty($user)){
-            throw new Exception();
+        else{
+            $this->config['deleteUser_Error_ini']['UserId'] = $id;
+            return $this->config['deleteUser_Error_ini'];
         }
-        return $user;
-    }
-    
-    public function userUpdate($user_id,$post){
-        // Clean all -> $_POST
-        foreach($post as $key => $value){
-            $data[$key] = $this->cleaner->params($value);
-        } 
-        // GetAllUserData
-        $user = $this->userRepository->getUserData($user_id);
-        // Update Params
-        $u['user_id'] = $user_id;
-        if(isset($data['email'])){
-            $d .= "email = :email,";
-            $u['email']=$data['email'];
-        }
-        if(isset($data['password'])){
-            $d .= "password = :password,";
-            $u['password']= password_hash($data['password'].$user->salt, PASSWORD_DEFAULT);
-        }
-        if(isset($data['lastname'])){
-            $d .= "lastname = :lastname,";
-            $u['lastname']=$data['lastname'];
-        }
-        if(isset($data['firstname'])){
-            $d .= "firstname = :firstname,";
-            $u['firstname']=$data['firstname'];
-        }   
-        $d = substr($d, 0, (strlen($d)-1));
-        // Check Token AND UserId
-        if(empty($user)){
-            // Error
-            throw new Exception();
-        }
-        $timestamp = time();
-        $datum = date("Y-m-d H:i:s", $timestamp);
-        $d .=",updated_at = :update";
-        $u['update']=$datum;
-        // Update
-        $this->userRepository->userUpdate($user_id, $d, $u);   
-        return $user;
-    }
-    
-    public function deleteUser($user_id, $post){
-        // getUserData
-        $user = $this->userRepository->getUserData($user_id);  
-        // Check UserId
-        if(empty($user)){
-            // Error
-            throw new Exception();
-        }else{
-            // Clean password -> $_POST
-            $password = $this->cleaner->params($post['password']);
-            // Check Password
-            if(password_verify($password.$user->salt, $user->password)){
-                // Delete User
-                $this->userRepository->deleteUser($user_id);
-                $data = [
-                    "Report"    => "Success",
-                    "Msg"       => "User and Session was deleted",
-                    "Status"    => 200
-                ];
-            }else{
-                // Error
-                throw new Exception();
-            }  
-        }
-        return $data;
     }
 }

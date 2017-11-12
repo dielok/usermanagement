@@ -1,152 +1,114 @@
 <?php
-use Helper\Token;
 use Slim\Http\Request;
 use Slim\Http\Response;
 use User\UserController;
-use User\UserRepository;
-use Middleware\TokenAuth;
-use Session\SessionRepository;
-use Session\SessionController;
+use Token\TokenController;
 
-/**
- * HELPER
- */
-$token = new Token();
-// Later a Class
-$data = [
-    "Report" => "Failure",
-    "Msg" => "An unexpected error occurred",
-    "Status" => 400
-];
 
+
+
+
+// Helper
+$userController = new UserController;
+$tokenController = new TokenController;
+
+
+
+
+
+//##############################################################################
 /**
  * Homepage
  */
-$app->get('/', function(Request $request, Response $response){  
-    // API - Service
-    $data = [
-        "API" => "Version ....",
-        "Created" => "0000-00-00 00:00:00"
-    ];
-    return $response->withJson($data, 200);
-    //var_dump(getallHeaders()['Token']);
-    //return $response;
+$app->get('/', function(Request $request, Response $response, Array $args){
+    return $response->write("API - Usermanagement");
 });
 
 
 
-/* #############################################################################
- * Sessions 
- * 
-*/
 
+
+//SESSION USERS
 /**
- * signin
+ * signin 
  */
-$app->post('/sessions/', function(Request $request, Response $response) use($token,$data) {
-    try{        
-        $userController = new UserController(new UserRepository($this->db));
-        $data = $userController->signin($request->getParsedBody(),$token->newToken());
-        $sessionController = new SessionController(new SessionRepository($this->db));   
-        $session = $sessionController->sessionUpdate($data['UserId'], $data['Token']);
-    } catch (Exception $e) {}
-    return $response->withJson($data, $data['Status']);
+$app->post('/sessions/', function(Request $request, Response $response, Array $args) use($userController) {
+    $userController->init_DB($this->db);
+    $userController->signinSession();
+    // log
 });
 
 /**
- * True Session
+ * exists Session
  */
-$app->get('/sessions/[{token}]', function(Request $request, Response $response, $args) use($data) {
+$app->get('/sessions/[{token}]', function(Request $request, Response $response, Array $args) use($tokenController) {
+    $tokenController->init_DB($this->db);
+    $jsonInfo = $tokenController->findToken($args['token']);
+
+    return $response->withJson($jsonInfo, intval($jsonInfo['Status']));
+    // log
+});
+
+/**
+ * delete Session
+ */
+$app->delete('/sessions/[{token}]', function(Request $request, Response $response, Array $args) use($tokenController) {
+    $tokenController->init_DB($this->db);
+    $jsonInfo = $tokenController->delete($args['token']);
     
-    // TODO: log message?
-    try{        
-        $sessionController = new SessionController(new SessionRepository($this->db));
-        $data = $sessionController->checkToken($args['token']);
-    } catch (Exception $e) {}
-    return $response->withJson($data, $data['Status']);   
-})->add(new TokenAuth());
+    return $response->withJson($jsonInfo, intval($jsonInfo['Status']));
+    // log
+});
 
+
+
+
+
+// CRUD USERS
 /**
- * Delete Session
- */
-$app->delete('/sessions/[{token}]', function(Request $request, Response $response, $args) use($data) {
-
-    try{        
-        $sessionController = new SessionController(new SessionRepository($this->db));
-        $data = $sessionController->deleteSession($args['token']);
-    } catch (Exception $e) {}
-    return $response->withJson($data, $data['Status']);
-})->add(new TokenAuth());
-
-
-
-/* #############################################################################
- * Users 
- * 
-*/
-
-/*
  * create
  */
-$app->post('/users/', function(Request $request, Response $response) use($token,$data) {   
-    try{
-        $userController = new UserController(new UserRepository($this->db));
-        $data = $userController->register($request->getParsedBody(), $token->newToken());
-        $sessionController = new SessionController(new SessionRepository($this->db));   
-        $session = $sessionController->sessionInsert($data['UserId'], $data['Token']);
-    } catch (Exception $e) {}
-    return $response->withJson($data, $data['Status']);     
+$app->post('/users/', function(Request $request, Response $response, Array $args) use($userController,$tokenController) {
+    $userController->init_DB($this->db);
+    $jsonInfo= $userController->create($request->getParsedBody());  
+    
+    if(intval($jsonInfo['Error'])==0){
+        $tokenController->init_DB($this->db);
+        $session = $tokenController->create((string)$jsonInfo['Token']);  
+    }
+    return $response->withJson($jsonInfo, intval($jsonInfo['Status']));
 });
 
 /**
- * retrieve
+ * read
  */
-$app->get('/users/[{id}]', function(Request $request, Response $response, $args) use($data) {
-    try{
-        $sessionController = new SessionController(new SessionRepository($this->db));   
-        $session = $sessionController->checkSession($args['id']);
-        if($session){
-            $userController = new UserController(new UserRepository($this->db));
-            $data = $userController->getUserData($args['id']); 
-        }
-        $statusCode = $data->status;
-    } catch (Exception $e) {
-        $statusCode = $data['Status'];
-    }
-    return $response->withJson($data, $statusCode);
-})->add(new TokenAuth());
+$app->get('/users/[{id}]', function(Request $request, Response $response, Array $args) use($userController) {
+    $userController->init_DB($this->db);
+    $jsonInfo = $userController->read($args['id']);
+    
+    return $response->withJson($jsonInfo, intval($jsonInfo['Status']));
+});
 
 /**
  * update
  */
-$app->put('/users/[{id}]', function(Request $request, Response $response, $args) use($data) {
-    try{
-        $sessionController = new SessionController(new SessionRepository($this->db));   
-        $session = $sessionController->checkSession($args['id']);
-        if($session){
-            $userController = new UserController(new UserRepository($this->db));
-            $data = $userController->userUpdate($args['id'],$request->getParsedBody());
-        }
-        $statusCode = $data->status;
-    } catch (Exception $e) {
-        $statusCode = $data['Status'];
-    }
-    return $response->withJson($data, $statusCode);
-})->add(new TokenAuth());
+$app->put('/users/[{id}]', function(Request $request, Response $response, Array $args) use($userController) {
+    $userController->init_DB($this->db);
+    $jsonInfo = $userController->update($args['id'], $request->getParsedBody());
+    
+    return $response->withJson($jsonInfo, intval($jsonInfo['Status']));
+});
 
 /**
  * delete
  */
-$app->delete('/users/[{id}]', function(Request $request, Response $response, $args) use($data) {   
-    try{   
-        $sessionController = new SessionController(new SessionRepository($this->db));   
-        $session = $sessionController->checkSession($args['id']);
-        if($session){
-            $userController = new UserController(new UserRepository($this->db));
-            $data = $userController->deleteUser($args['id'], $request->getParsedBody());
-            $session = $sessionController->deleteUserSession($args['id']);
-        }
-    } catch (Exception $e) {}
-    return $response->withJson($data, $data['Status']);
-})->add(new TokenAuth());
-
+$app->delete('/users/[{id}]', function(Request $request, Response $response, Array $args) use($userController,$tokenController) {
+    $userController->init_DB($this->db);
+    $jsonInfo = $userController->delete($args['id'], $request->getParsedBody());
+    
+    if(intval($jsonInfo['UserId']) > 0){
+        $tokenController->init_DB($this->db);
+        $session = $tokenController->delete($tokenController->headerToken());
+    }
+    return $response->withJson($jsonInfo, intval($jsonInfo['Status']));
+});
