@@ -27,16 +27,9 @@ class UserModel {
     }
     
     /*
-     * Login Methods
-     */
-    public function siginSession(){
-        
-    }
-    
-    /*
      * CRUD Methods
      */
-    public function createUser(Array $user){    
+    public function createUser($user){    
         // User insert
         $stmt = $this->pdo->prepare("INSERT INTO {$this->table} (email,password,lastname,firstname,salt) VALUES (:e, :p, :l, :f, :s)");
         $stmt->bindParam(":e", $user['email']);

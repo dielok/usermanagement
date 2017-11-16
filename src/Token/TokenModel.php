@@ -1,16 +1,15 @@
 <?php
 namespace Token;
 
-use PDO;
 /**
  * Description of TokenModel
  *
  * @author martinleue
  */
 class TokenModel {
-    private $pdo, $table;
+    public $pdo, $table;
     
-    public function __construct(PDO $pdo) {
+    public function __construct($pdo) {
         $this->pdo = $pdo;
         $this->table = $this->table();
     }
@@ -26,9 +25,17 @@ class TokenModel {
         return $stmt->fetch();
     }
     
-    public function createToken($token){    
-        $stmt = $this->pdo->prepare("INSERT INTO {$this->table} (token) VALUES (:t)");
+    public function findIp($ip){
+        $stmt = $this->pdo->prepare("SELECT ip,token FROM {$this->table} WHERE ip = :ip");
+        $stmt->bindParam(":ip", $ip);
+        $stmt->execute();
+        return $stmt->fetch();
+    }
+    
+    public function createToken($token,$ip){    
+        $stmt = $this->pdo->prepare("INSERT INTO {$this->table} (token,ip) VALUES (:t, :ip)");
         $stmt->bindParam(":t", $token);
+        $stmt->bindParam(":ip", $ip);
         $stmt->execute();
     }
     

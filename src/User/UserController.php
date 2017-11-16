@@ -12,10 +12,9 @@ use Helper\PostCleaner;
  * @author martinleue
  */
 class UserController {
-    private $pdo, $postCleaner, $token, $config;
+    private $pdo, $postCleaner, $config,$userModel;
     
     public function __construct() {
-        $this->token = new TokenController();
         $this->postCleaner = new PostCleaner();
         $this->config = $ini_array = parse_ini_file(__DIR__."/../../inc/config.ini", TRUE);
     }
@@ -25,33 +24,42 @@ class UserController {
      */
     public function init_DB(PDO $pdo){
         $this->pdo = $pdo;
+        $this->userModel = $userModel = new UserModel($this->pdo);
     }
     
     /*
      * Login Methods
      */
-    public function signinSession(){
+    public function signinSession($post, $t){  
+        $email      = $this->postCleaner->params($post['email']);
+        $password   = $this->postCleaner->params($post['password']);
+        $token      = $this->postCleaner->params($t);
+        $findUser = $this->userModel->findUser($email);
+        $user = $this->userModel->readUser($findUser['user_id']);
         
+        if(password_verify($password.$user['salt'], $user['password']) and (!empty($findUser))){        
+            $this->config['signinUser_ini']['Token'] = $token;
+            return $this->config['signinUser_ini'];
+        }else{
+            return $this->config['signinUser_Error_ini'];  
+        }
     }
     
     /*
      * CRUD Methods
      */
-    public function create(Array $post){
+    public function create($post, $token){
         $user['email']      = $this->postCleaner->params($post['email']);
         $user['password']   = $this->postCleaner->params($post['password']);
         $user['lastname']   = $this->postCleaner->params($post['lastname']);
         $user['firstname']  = $this->postCleaner->params($post['firstname']);
         $user['pw_salt']    = Salt::back($user['email'],$user['password'])."!";
-                
         $user['password'] = password_hash($user['password'].$user['pw_salt'], PASSWORD_DEFAULT);
-        
-        $userModel = new UserModel($this->pdo);
-        $findUser  = $userModel->findUser($user['email']);
+        $findUser  = $this->userModel->findUser($user['email']);
                 
         if(empty($findUser)){
-            $userModel->createUser($user);
-            $this->config['createUser_ini']['Token'] = $this->token->newToken();
+            $this->userModel->createUser($user);
+            $this->config['createUser_ini']['Token'] = $token;
             return $this->config['createUser_ini'];
         }
         else{
@@ -60,8 +68,7 @@ class UserController {
     }
     
     public function read($id){
-        $userModel = new UserModel($this->pdo);
-        $user = $userModel->readUser($id);
+        $user = $this->userModel->readUser($id);
         
         if($user === false){
             return $this->config['readUser_Error_ini'];
@@ -81,14 +88,13 @@ class UserController {
     
     public function update($id, $post){
         $time = date("Y-m-d H:i:s");
-        $userModel = new UserModel($this->pdo);
         foreach($post as $value => $key){
             if($value == "password"){
                 $salt = Salt::back($value, $key)."!";
                 $key = password_hash($post['password'].$salt, PASSWORD_DEFAULT);
-                $userModel->updateUser($id, "salt", $salt, $time);
+                $this->userModel->updateUser($id, "salt", $salt, $time);
             }
-            $userModel->updateUser($id, (string)$value, $key, $time);
+            $this->userModel->updateUser($id, (string)$value, $key, $time);
             $data[$value] = $key; 
         }
         
@@ -102,11 +108,10 @@ class UserController {
     
     public function delete($id,$post){
         $password = $this->postCleaner->params($post['password']);
-        $userModel = new UserModel($this->pdo);
-        $userData = $userModel->readUser($id);
+        $userData = $this->userModel->readUser($id);
         
         if(password_verify($password.$userData['salt'], $userData['password'])){
-            $userModel->deleteUser($id);
+            $this->userModel->deleteUser($id);
             $this->config['deleteUser_ini']['UserId'] = $id;
             return $this->config['deleteUser_ini'];
         }

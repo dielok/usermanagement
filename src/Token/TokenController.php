@@ -1,7 +1,6 @@
 <?php
 namespace Token;
 
-use PDO;
 /**
  * Description of Token
  *
@@ -18,7 +17,7 @@ class TokenController {
         return bin2hex(openssl_random_pseudo_bytes(16));
     }
     
-    public function init_DB(PDO $pdo){
+    public function init_DB($pdo){
         $this->pdo = $pdo;
     }
     
@@ -27,6 +26,7 @@ class TokenController {
     }
     
     public function findToken($token){
+        $tokenModel = new TokenModel($this->pdo);
         $tokenModel = new TokenModel($this->pdo);
         $db_token = $tokenModel->findToken($token);
    
@@ -43,12 +43,15 @@ class TokenController {
         $tokenModel = new TokenModel($this->pdo);
         $findToken = $tokenModel->findToken($token);
         
-        if(empty($findToken)){
-            $tokenModel->createToken($token);
-            return true;
-        }
-        else{
-            return false;
+        $ip = $_SERVER['REMOTE_ADDR'];
+        $findIp = $tokenModel->findIp($ip);
+        
+        if(empty($findToken['token']) and $findIp['ip'] != $ip){
+            $tokenModel->createToken($token, $ip);
+        }else{
+            $data['token'] = $findIp['token'];
+            $data['error'] = true;
+            return $data;
         }
     }
     
@@ -56,8 +59,9 @@ class TokenController {
         $tokenModel = new TokenModel($this->pdo);
         $db_token = $tokenModel->findToken($token);
    
-        if(!empty($db_token)){
+        if(!empty($db_token['token'])){
             $tokenModel->deleteToken($token);
+            $this->config['token_delete_ini']['Token'] = $token;
             return $this->config['token_delete_ini'];
         }
         else{
