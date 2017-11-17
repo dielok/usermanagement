@@ -12,7 +12,7 @@ use Middleware\Middleware;
 
 // Helper 
 // Klassen
-$userController  = new UserController;
+$userController  = new UserController();
 $tokenController = new TokenController;
 $logController   = new LogController();
 
@@ -32,7 +32,6 @@ $logController   = new LogController();
 $app->get('/', function(Request $request, Response $response, Array $args){
     return $response->write("API - Usermanagement");
 });
-
 
 
 
@@ -128,31 +127,37 @@ $app->delete('/sessions/[{token}]', function(Request $request, Response $respons
 
 
 
-
 /* users */
 
 
 /**
  * create
  */
-$app->post('/users/', function(Request $request, Response $response, Array $args) use($userController,$tokenController) {
-    try{
-        $tokenController->init_DB($this->db);
-        $userController->init_DB($this->db);
-        $jsonInfo= $userController->create($request->getParsedBody(), $tokenController->newToken());  
+$app->post('/users/', function(Request $request, Response $response, Array $args) {
 
-        if(intval($jsonInfo['Error'])==0){ 
-            $session = $tokenController->create((string)$jsonInfo['Token']); 
-            if($session['error'] == true){
-                $jsonInfo['Token'] = $session['token'];
-            }
-        }
-        return $response->withJson($jsonInfo, intval($jsonInfo['Status']));
+    $userController = new UserController($this->db);
+
+    try {
+
+        $user = $userController->create($request->getParsedBody());
+
+        // $request->getParsedBody()
+
+        return $response->withJson($user, 201); // 201 - created!
+
+    } catch(Exception $e) {
+
+        // not created - booh - why? The exception already knows why!
+
+        $answer = [
+            'message' => $e->getMessage()
+        ];
+
+        return $response->withJson($answer, 418); // 418 - I’m a teapot!
+
     }
-    catch(Exception $e){
-        return $response->withStatus(400)->write("Anwendungsfehler, wir kümmern uns gerade um das Problem, versuchen Sie es später nocheinmal!");
-    }
-})->add(new Middleware());
+
+});
 
 /**
  * read

@@ -14,17 +14,14 @@ use Helper\PostCleaner;
 class UserController {
     private $pdo, $postCleaner, $config,$userModel;
     
-    public function __construct() {
+    public function __construct(PDO $pdo = null) {
+
+        if ($pdo === null) return;
+        
+        $this->pdo = $pdo;
+
         $this->postCleaner = new PostCleaner();
         $this->config = $ini_array = parse_ini_file(__DIR__."/../../inc/config.ini", TRUE);
-    }
-    
-    /*
-     * init DB
-     */
-    public function init_DB(PDO $pdo){
-        $this->pdo = $pdo;
-        $this->userModel = $userModel = new UserModel($this->pdo);
     }
     
     /*
@@ -48,23 +45,32 @@ class UserController {
     /*
      * CRUD Methods
      */
-    public function create($post, $token){
+    public function create($post){
+
+        $user = array();
+
         $user['email']      = $this->postCleaner->params($post['email']);
         $user['password']   = $this->postCleaner->params($post['password']);
         $user['lastname']   = $this->postCleaner->params($post['lastname']);
         $user['firstname']  = $this->postCleaner->params($post['firstname']);
         $user['pw_salt']    = Salt::back($user['email'],$user['password'])."!";
         $user['password'] = password_hash($user['password'].$user['pw_salt'], PASSWORD_DEFAULT);
-        $findUser  = $this->userModel->findUser($user['email']);
-                
-        if(empty($findUser)){
-            $this->userModel->createUser($user);
-            $this->config['createUser_ini']['Token'] = $token;
-            return $this->config['createUser_ini'];
+
+        // User insert
+        $stmt = $this->pdo->prepare("INSERT INTO Users (email,password,lastname,firstname,salt) VALUES (:e, :p, :l, :f, :s)");
+        
+        $stmt->bindParam(":e", $user['email']);
+        $stmt->bindParam(":p", $user['password']);
+        $stmt->bindParam(":l", $user['lastname']);
+        $stmt->bindParam(":f", $user['firstname']);
+        $stmt->bindParam(":s", $user['pw_salt']);
+
+        if ( ! $stmt->execute()) {
+
+            throw new Exception("PDO won't!");
+
         }
-        else{
-            return $this->config['createUser_Error_ini'];
-        }
+
     }
     
     public function read($id){

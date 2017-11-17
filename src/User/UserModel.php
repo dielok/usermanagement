@@ -29,16 +29,6 @@ class UserModel {
     /*
      * CRUD Methods
      */
-    public function createUser($user){    
-        // User insert
-        $stmt = $this->pdo->prepare("INSERT INTO {$this->table} (email,password,lastname,firstname,salt) VALUES (:e, :p, :l, :f, :s)");
-        $stmt->bindParam(":e", $user['email']);
-        $stmt->bindParam(":p", $user['password']);
-        $stmt->bindParam(":l", $user['lastname']);
-        $stmt->bindParam(":f", $user['firstname']);
-        $stmt->bindParam(":s", $user['pw_salt']);
-        $stmt->execute();
-    }
     
     public function readUser($id){
         $stmt = $this->pdo->prepare("SELECT * FROM {$this->table} WHERE user_id = :id");
