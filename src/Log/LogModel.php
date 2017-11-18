@@ -10,7 +10,8 @@ use PDO;
 class LogModel {
     private $pdo, $table;
     
-    public function __construct(PDO $pdo) {
+    public function __construct(PDO $pdo = null) {
+        if($pdo === null){return;}
         $this->pdo = $pdo;
         $this->table = $this->table();
     }

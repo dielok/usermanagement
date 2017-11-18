@@ -1,6 +1,7 @@
 <?php
 namespace Token;
 
+use PDO;
 /**
  * Description of TokenModel
  *
@@ -9,7 +10,8 @@ namespace Token;
 class TokenModel {
     public $pdo, $table;
     
-    public function __construct($pdo) {
+    public function __construct(PDO $pdo = null) {
+        if($pdo === null){return;}
         $this->pdo = $pdo;
         $this->table = $this->table();
     }
@@ -18,28 +20,21 @@ class TokenModel {
         return "Tokens";
     }
     
-    public function findToken($token){
-        $stmt = $this->pdo->prepare("SELECT token FROM {$this->table} WHERE token = :token");
+    public function read($token){
+        $stmt = $this->pdo->prepare("SELECT * FROM {$this->table} WHERE token = :token");
         $stmt->bindParam(":token", $token);
         $stmt->execute();
-        return $stmt->fetch();
+        $res = $stmt->fetch(PDO::FETCH_ASSOC);
+        return $res;
     }
     
-    public function findIp($ip){
-        $stmt = $this->pdo->prepare("SELECT ip,token FROM {$this->table} WHERE ip = :ip");
-        $stmt->bindParam(":ip", $ip);
-        $stmt->execute();
-        return $stmt->fetch();
-    }
-    
-    public function createToken($token,$ip){    
-        $stmt = $this->pdo->prepare("INSERT INTO {$this->table} (token,ip) VALUES (:t, :ip)");
-        $stmt->bindParam(":t", $token);
-        $stmt->bindParam(":ip", $ip);
+    public function create($token){    
+        $stmt = $this->pdo->prepare("INSERT INTO {$this->table} (token) VALUES (:token)");
+        $stmt->bindParam(":token", $token);
         $stmt->execute();
     }
     
-    public function deleteToken($token){
+    public function delete($token){
         $stmt = $this->pdo->prepare("DELETE FROM {$this->table} WHERE token = :token");
         $stmt->bindParam(":token", $token);
         $stmt->execute();

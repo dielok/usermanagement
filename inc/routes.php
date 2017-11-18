@@ -4,25 +4,6 @@ use Slim\Http\Response;
 use User\UserController;
 use Token\TokenController;
 use Log\LogController;
-use Middleware\Middleware;
-
-
-
-
-
-// Helper 
-// Klassen
-$userController  = new UserController;
-$tokenController = new TokenController;
-$logController   = new LogController();
-
-
-
-
-
-
-
-
 
 
 //##############################################################################
@@ -35,171 +16,176 @@ $app->get('/', function(Request $request, Response $response, Array $args){
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
 /* sessions */
-
-
 
 /**
  * signin 
  */
-$app->post('/sessions/', function(Request $request, Response $response, Array $args) use($userController,$tokenController,$logController) {
+$app->post('/sessions/', function(Request $request, Response $response, Array $args){
     try {
-        $tokenController->init_DB($this->db);
-        $userController->init_DB($this->db);
-        $logController->init_DB($this->db);
-        $jsonInfo = $userController->signinSession($request->getParsedBody(), $tokenController->newToken());
-
-        if(intval($jsonInfo['Error'])==0){
-            // is ip or token true | token = oldToken
-            $session = $tokenController->create((string)$jsonInfo['Token']);  
-            if($session['error'] == true){
-                $jsonInfo['Token'] = $session['token'];
-            }
-        }
-        // log
+        $tokenController = new TokenController($this->db);
+        $userController  = new UserController($this->db);
+        $logController   = new LogController($this->db);
+        
         $logController->createLog();
-
-        return $response->withJson($jsonInfo , intval($jsonInfo['Status']));
+        
+        if($tokenController->read($tokenController->headerToken())){
+            $user = $userController->signin($request->getParsedBody(), $tokenController->newToken());
+            $tokenController->delete($tokenController->headerToken());
+            $tokenController->create($user['token']);
+            return $response->withJson($user, 201);    
+        }throw new Exception("The Token is not valid!");
     }
     catch (Exception $e) {
-        return $response->withStatus(400)->write("Anwendungsfehler, wir kümmern uns gerade um das Problem, versuchen Sie es später nocheinmal!");
+        $answer = [
+            'message' => $e->getMessage()
+        ];
+        return $response->withJson($answer, 418);
     }
-})->add(new Middleware());
+});
 
 /**
  * exists Session
  */
-$app->get('/sessions/[{token}]', function(Request $request, Response $response, Array $args) use($tokenController,$logController) {
+$app->get('/sessions/[{token}]', function(Request $request, Response $response, Array $args){
     try{
-        $tokenController->init_DB($this->db);
-        $logController->init_DB($this->db);
-        $jsonInfo = $tokenController->findToken($args['token']);
-
-        // log
+        $tokenController = new TokenController($this->db);
+        $logController   = new LogController($this->db);
+        
         $logController->createLog();
-
-        return $response->withJson($jsonInfo, intval($jsonInfo['Status']));
+        
+        if($tokenController->read($tokenController->headerToken())){
+            $token = $tokenController->read($args['token']);
+            return $response->withJson($token, 201); 
+        }throw new Exception("The Token is not valid!");
     }
-    catch (Exception $e){
-        return $response->withStatus(400)->write("Anwendungsfehler, wir kümmern uns gerade um das Problem, versuchen Sie es später nocheinmal!");
+    catch (Exception $e) {
+        $answer = [
+            'message' => $e->getMessage()
+        ];
+        return $response->withJson($answer, 418);
     }
-})->add(new Middleware());;
+});
 
 /**
  * delete Session
  */
-$app->delete('/sessions/[{token}]', function(Request $request, Response $response, Array $args) use($tokenController,$logController) {
+$app->delete('/sessions/[{token}]', function(Request $request, Response $response, Array $args){
     try{
-        $tokenController->init_DB($this->db);
-        $logController->init_DB($this->db);
-        $jsonInfo = $tokenController->delete($args['token']);
-
-        // log
+        $tokenController = new TokenController($this->db);
+        $logController   = new LogController($this->db);
+        
         $logController->createLog();
-
-        return $response->withJson($jsonInfo, intval($jsonInfo['Status']));
+        
+        if($tokenController->read($tokenController->headerToken())){
+            $token = $tokenController->delete($args['token']);
+            return $response->withJson($token, 201);
+        }throw new Exception("The Token is not valid!");
     }
-    catch(Exception $e){
-        return $response->withStatus(400)->write("Anwendungsfehler, wir kümmern uns gerade um das Problem, versuchen Sie es später nocheinmal!");
+    catch (Exception $e) {
+        $answer = [
+            'message' => $e->getMessage()
+        ];
+        return $response->withJson($answer, 418);
     }
-})->add(new Middleware());
-
-
-
-
-
-
-
-
-
-
+});
 
 
 
 /* users */
 
-
 /**
  * create
  */
-$app->post('/users/', function(Request $request, Response $response, Array $args) use($userController,$tokenController) {
+$app->post('/users/', function(Request $request, Response $response, Array $args) {
     try{
-        $tokenController->init_DB($this->db);
-        $userController->init_DB($this->db);
-        $jsonInfo= $userController->create($request->getParsedBody(), $tokenController->newToken());  
+        $tokenController = new TokenController($this->db);
+        $userController  = new UserController($this->db);
+        $logController   = new LogController($this->db);
+        
+        $logController->createLog();
 
-        if(intval($jsonInfo['Error'])==0){ 
-            $session = $tokenController->create((string)$jsonInfo['Token']); 
-            if($session['error'] == true){
-                $jsonInfo['Token'] = $session['token'];
-            }
-        }
-        return $response->withJson($jsonInfo, intval($jsonInfo['Status']));
+        $user  = $userController->create($request->getParsedBody(), $tokenController->newToken());  
+        $tokenController->create($user['token']);
+        return $response->withJson($user, 201);
     }
-    catch(Exception $e){
-        return $response->withStatus(400)->write("Anwendungsfehler, wir kümmern uns gerade um das Problem, versuchen Sie es später nocheinmal!");
+    catch (Exception $e) {
+        $answer = [
+            'message' => $e->getMessage()
+        ];
+        return $response->withJson($answer, 418);
     }
-})->add(new Middleware());
+});
 
 /**
  * read
  */
-$app->get('/users/[{id}]', function(Request $request, Response $response, Array $args) use($userController) {
+$app->get('/users/[{email}]', function(Request $request, Response $response, Array $args){
     try{
-        $userController->init_DB($this->db);
-        $jsonInfo = $userController->read($args['id']);
+        $userController  = new UserController($this->db);
+        $logController   = new LogController($this->db);
+        $tokenController = new TokenController($this->db);
+        
+        $logController->createLog();
 
-        return $response->withJson($jsonInfo, intval($jsonInfo['Status']));
+        if($tokenController->read($tokenController->headerToken())){
+            $user = $userController->read($args['email']);  
+            return $response->withJson($user, 201);
+        }throw new Exception("The Token is not valid!");
     }
-    catch(Exception $e){
-        return $response->withStatus(400)->write("Anwendungsfehler, wir kümmern uns gerade um das Problem, versuchen Sie es später nocheinmal!");
+    catch (Exception $e) {
+        $answer = [
+            'message' => $e->getMessage()
+        ];
+        return $response->withJson($answer, 418);
     }
-})->add(new Middleware());
+});
 
 /**
  * update
  */
-$app->put('/users/[{id}]', function(Request $request, Response $response, Array $args) use($userController) {
+$app->put('/users/', function(Request $request, Response $response){
     try{
-        $userController->init_DB($this->db);
-        $jsonInfo = $userController->update($args['id'], $request->getParsedBody());
+        $userController  = new UserController($this->db);
+        $logController   = new LogController($this->db);
+        $tokenController = new TokenController($this->db);
+        
+        $logController->createLog();
 
-        return $response->withJson($jsonInfo, intval($jsonInfo['Status']));
+        if($tokenController->read($tokenController->headerToken())){
+            $user  = $userController->update($request->getParsedBody()); 
+            return $response->withJson($user, 201);
+        }throw new Exception("The Token is not valid!");
     }
-    catch(Exception $e){
-        return $response->withStatus(400)->write("Anwendungsfehler, wir kümmern uns gerade um das Problem, versuchen Sie es später nocheinmal!");
+    catch (Exception $e) {
+        $answer = [
+            'message' => $e->getMessage()
+        ];
+        return $response->withJson($answer, 418);
     }
-})->add(new Middleware());
+});
 
 /**
  * delete
  */
-$app->delete('/users/[{id}]', function(Request $request, Response $response, Array $args) use($userController,$tokenController) {
+$app->delete('/users/', function(Request $request, Response $response){
     try{
-        $tokenController->init_DB($this->db);
-        $userController->init_DB($this->db);
-        $jsonInfo = $userController->delete($args['id'], $request->getParsedBody());
+        $userController  = new UserController($this->db);
+        $logController   = new LogController($this->db);
+        $tokenController = new TokenController($this->db);
+        
+        $logController->createLog();
 
-        if(intval($jsonInfo['UserId']) > 0){
-            // token delete
-            $tokenController->delete($tokenController->headerToken());
-        }
-        return $response->withJson($jsonInfo, intval($jsonInfo['Status']));
+        if($tokenController->read($tokenController->headerToken())){
+            $user  = $userController->delete($request->getParsedBody(),$tokenController->headerToken());
+            $tokenController->delete($user['token']);
+            return $response->withJson($user, 201);
+        }throw new Exception("The Token is not valid!");
     }
-    catch(Exception $e){
-        return $response->withStatus(400)->write("Anwendungsfehler, wir kümmern uns gerade um das Problem, versuchen Sie es später nocheinmal!");
+    catch (Exception $e) {
+        $answer = [
+            'message' => $e->getMessage()
+        ];
+        return $response->withJson($answer, 418);
     }
-})->add(new Middleware());
+});
