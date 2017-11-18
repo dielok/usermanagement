@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: localhost:8889
--- Erstellungszeit: 16. Nov 2017 um 19:26
+-- Erstellungszeit: 18. Nov 2017 um 19:07
 -- Server-Version: 5.6.35
 -- PHP-Version: 7.1.8
 
@@ -37,7 +37,6 @@ CREATE TABLE `Logs` (
 
 CREATE TABLE `Tokens` (
   `token` varchar(32) NOT NULL,
-  `ip` varchar(128) NOT NULL,
   `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at` timestamp NULL DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
@@ -49,11 +48,10 @@ CREATE TABLE `Tokens` (
 --
 
 CREATE TABLE `Users` (
-  `user_id` int(11) NOT NULL,
   `email` varchar(100) NOT NULL,
   `password` varchar(255) NOT NULL,
-  `lastname` varchar(50) NOT NULL,
-  `firstname` varchar(50) NOT NULL,
+  `lastname` varchar(50) DEFAULT NULL,
+  `firstname` varchar(50) DEFAULT NULL,
   `salt` varchar(12) NOT NULL,
   `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at` timestamp NULL DEFAULT NULL
@@ -79,7 +77,7 @@ ALTER TABLE `Tokens`
 -- Indizes für die Tabelle `Users`
 --
 ALTER TABLE `Users`
-  ADD PRIMARY KEY (`user_id`);
+  ADD UNIQUE KEY `email` (`email`);
 
 --
 -- AUTO_INCREMENT für exportierte Tabellen
@@ -90,8 +88,3 @@ ALTER TABLE `Users`
 --
 ALTER TABLE `Logs`
   MODIFY `id` int(10) NOT NULL AUTO_INCREMENT;
---
--- AUTO_INCREMENT für Tabelle `Users`
---
-ALTER TABLE `Users`
-  MODIFY `user_id` int(11) NOT NULL AUTO_INCREMENT;
