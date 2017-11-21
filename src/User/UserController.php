@@ -45,16 +45,14 @@ class UserController {
     /*
      * CRUD Methods
      */
-    public function create($post){
+    public function create($user) {
 
-        $user = array();
-
-        $user['email']      = $this->postCleaner->params($post['email']);
-        $user['password']   = $this->postCleaner->params($post['password']);
-        $user['lastname']   = $this->postCleaner->params($post['lastname']);
-        $user['firstname']  = $this->postCleaner->params($post['firstname']);
+        $user['email']      = $this->postCleaner->params($user['email']);
+        $user['password']   = $this->postCleaner->params($user['password']);
+        $user['lastname']   = $this->postCleaner->params($user['lastname']);
+        $user['firstname']  = $this->postCleaner->params($user['firstname']);
         $user['pw_salt']    = Salt::back($user['email'],$user['password'])."!";
-        $user['password'] = password_hash($user['password'].$user['pw_salt'], PASSWORD_DEFAULT);
+        $user['password']   = password_hash($user['password'].$user['pw_salt'], PASSWORD_DEFAULT);
 
         // User insert
         $stmt = $this->pdo->prepare("INSERT INTO Users (email,password,lastname,firstname,salt) VALUES (:e, :p, :l, :f, :s)");
@@ -68,6 +66,13 @@ class UserController {
         if ( ! $stmt->execute()) {
 
             throw new Exception("PDO won't!");
+
+        } else {
+            
+            unset($user['pw_salt']);
+            unset($user['password']);
+
+            return $user;
 
         }
 
