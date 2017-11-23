@@ -34,6 +34,9 @@ class UserController {
             $user['token'] = $token;
             return $user;
         }
+        else{
+            return null;
+        }
     }
     
     /*

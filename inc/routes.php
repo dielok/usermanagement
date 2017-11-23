@@ -27,14 +27,17 @@ $app->post('/sessions/', function(Request $request, Response $response, Array $a
         $userController  = new UserController($this->db);
         $logController   = new LogController($this->db);
         
-        $logController->createLog();
+        $logController->createLog();    
+
+        $user = $userController->signin($request->getParsedBody(), $tokenController->newToken());
         
-        if($tokenController->read($tokenController->headerToken())){
-            $user = $userController->signin($request->getParsedBody(), $tokenController->newToken());
-            $tokenController->delete($tokenController->headerToken());
-            $tokenController->create($user['token']);
-            return $response->withJson($user, 201);    
-        }throw new Exception("The Token is not valid!");
+        if($user === null){
+            throw new Exception("Authorization failed");  
+        }
+        else{
+            $tokenController->create($user['token'],$user['token_id']);
+            return $response->withJson($user, 201);  
+        }
     }
     catch (Exception $e) {
         $answer = [
@@ -106,8 +109,14 @@ $app->post('/users/', function(Request $request, Response $response, Array $args
         $logController->createLog();
 
         $user  = $userController->create($request->getParsedBody(), $tokenController->newToken());  
-        $tokenController->create($user['token']);
-        return $response->withJson($user, 201);
+        
+        if($user === null){
+            throw new Exception("User exists");  
+        }
+        else{
+            $tokenController->create($user['token'],$user['token_id']);
+            return $response->withJson($user, 201);  
+        }        
     }
     catch (Exception $e) {
         $answer = [

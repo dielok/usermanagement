@@ -24,28 +24,26 @@ class TokenController {
         return getallheaders()['Token'];
     }
     
-    public function create($token){
+    public function create($token,$token_id){
         $tokenModel = new TokenModel($this->pdo);
-        $token_db   = $tokenModel->read($token);
-        $tokenModel->create($token);
+        $token_db   = $tokenModel->read($token_id);
+        
+        if($token_db['token_id'] == $token_id){
+            $this->delete($token_id);
+        }
+        
+        $tokenModel->create($token_id, $token);
     }
     
-    public function read($t){
+    public function read($token_id){
         $tokenModel = new TokenModel($this->pdo);
-        $token      = $tokenModel->read($t);
+        $token      = $tokenModel->read($token_id);
         return $token;
     }
     
-    public function delete($token){
+    public function delete($token_id){
         $tokenModel = new TokenModel($this->pdo);
-        $token_db   = $tokenModel->read($token);
-   
-        if(isset($token_db['token'])){
-            $tokenModel->delete($token);
-            $token = [
-                "msg" => "Token has been deleted"
-            ];
-            return $token;
-        }
+        $token_db   = $tokenModel->read($token_id);
+        $tokenModel->delete($token_id);
     }
 }
