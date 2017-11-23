@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: localhost:8889
--- Erstellungszeit: 18. Nov 2017 um 19:07
+-- Erstellungszeit: 23. Nov 2017 um 18:16
 -- Server-Version: 5.6.35
 -- PHP-Version: 7.1.8
 
@@ -36,6 +36,7 @@ CREATE TABLE `Logs` (
 --
 
 CREATE TABLE `Tokens` (
+  `token_id` int(10) NOT NULL,
   `token` varchar(32) NOT NULL,
   `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at` timestamp NULL DEFAULT NULL
@@ -53,6 +54,7 @@ CREATE TABLE `Users` (
   `lastname` varchar(50) DEFAULT NULL,
   `firstname` varchar(50) DEFAULT NULL,
   `salt` varchar(12) NOT NULL,
+  `token_id` int(10) NOT NULL,
   `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at` timestamp NULL DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
@@ -71,13 +73,14 @@ ALTER TABLE `Logs`
 -- Indizes für die Tabelle `Tokens`
 --
 ALTER TABLE `Tokens`
-  ADD UNIQUE KEY `token` (`token`);
+  ADD UNIQUE KEY `token_id` (`token_id`);
 
 --
 -- Indizes für die Tabelle `Users`
 --
 ALTER TABLE `Users`
-  ADD UNIQUE KEY `email` (`email`);
+  ADD UNIQUE KEY `email` (`email`),
+  ADD UNIQUE KEY `token_id` (`token_id`);
 
 --
 -- AUTO_INCREMENT für exportierte Tabellen
@@ -88,3 +91,8 @@ ALTER TABLE `Users`
 --
 ALTER TABLE `Logs`
   MODIFY `id` int(10) NOT NULL AUTO_INCREMENT;
+--
+-- AUTO_INCREMENT für Tabelle `Users`
+--
+ALTER TABLE `Users`
+  MODIFY `token_id` int(10) NOT NULL AUTO_INCREMENT;
